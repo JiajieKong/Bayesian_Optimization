@@ -10,6 +10,9 @@ library(CompModels)
 library(scatterplot3d)
 library(ggplot2)
 
+current_path = dirname(rstudioapi::getSourceEditorContext()$path)
+setwd(current_path)
+
 bov <- function(y, end = length(y)){ # Calculates best overall value
   prog <- rep(min(y), end)
   prog[1:min(end, length(y))] <- y[1:min(end, length(y))]
@@ -187,8 +190,8 @@ main = function(f, method, beta, A, ninit = 10, end = 100, reps = 100){
   return(list(os = os, prog = prog))
 }
 
-res = list()
-#res = readRDS("res_May6")
+res_grid_herbie = list()
+res_grid_herbie = readRDS("res_May6")
 
 system.time({
   A = matrix(c(-2,-2, 2,2), ncol = 2)
@@ -251,7 +254,7 @@ system.time({
   }
 })
 
-fminPlot_CI = function(result,  CI = TRUE, leg, l,  f_minima){
+fminPlot_grid_herbie = function(result,  CI = TRUE, leg, l,  f_minima){
   if (leg == 1){
     m_title = "w = 1; beta = 0; v = 1; u = seq(0, 1, .1)"
   }else if (leg == 2){
@@ -277,8 +280,8 @@ fminPlot_CI = function(result,  CI = TRUE, leg, l,  f_minima){
   plot(l, c(max(y), min(c(y, f_minima))), type="n", 
        xlab="black-box evaluations (n)", ylab="average best objective value",
        main = m_title)
-  #cc = rainbow(11, start = 0, end = .8) #color
-  cc = gray(seq(0, .8, length.out = 11)) #gray
+  cc = rainbow(11, start = 0, end = .8) #color
+  #cc = gray(seq(0, .8, length.out = 11)) #gray
   legend("topleft", paste(gridd)  , lwd = 1.5, 
          col = cc, lty = 1)
   for (i in 1:11){
@@ -293,19 +296,21 @@ fminPlot_CI = function(result,  CI = TRUE, leg, l,  f_minima){
 
 pdf("test_plot_gray.pdf", width=12, height=16, paper='special')
 par(mfrow = c(4,2))
-fminPlot_CI(res[[1]], CI = FALSE, leg = '1', c(0, 30), 0)
-fminPlot_CI(res[[5]], CI = FALSE, leg = '1', c(-5, 60), -2.968575)
+fminPlot_grid_herbie(res_grid_herbie[[1]], CI = FALSE, leg = '1', c(0, 30), 0)
+fminPlot_grid_herbie(res_grid_herbie[[5]], CI = FALSE, leg = '1', c(-5, 60), -2.968575)
 
-fminPlot_CI(res[[2]], CI = FALSE, leg = '2',c(0, 30), 0)
-fminPlot_CI(res[[6]], CI = FALSE, leg = '2', c(-5, 60), -2.968575)
+fminPlot_grid_herbie(res_grid_herbie[[2]], CI = FALSE, leg = '2',c(0, 30), 0)
+fminPlot_grid_herbie(res_grid_herbie[[6]], CI = FALSE, leg = '2', c(-5, 60), -2.968575)
 
-fminPlot_CI(res[[3]], CI = FALSE, leg = '3', c(0, 30), 0)
-fminPlot_CI(res[[7]], CI = FALSE, leg = '3', c(-5, 60), -2.968575)
+fminPlot_grid_herbie(res_grid_herbie[[3]], CI = FALSE, leg = '3', c(0, 30), 0)
+fminPlot_grid_herbie(res_grid_herbie[[7]], CI = FALSE, leg = '3', c(-5, 60), -2.968575)
 
-fminPlot_CI(res[[4]], CI = FALSE, leg = '4', c(0, 30), 0)
-fminPlot_CI(res[[8]], CI = FALSE, leg = '4',c(-5, 60), -2.968575)
+fminPlot_grid_herbie(res_grid_herbie[[4]], CI = FALSE, leg = '4', c(0, 30), 0)
+fminPlot_grid_herbie(res_grid_herbie[[8]], CI = FALSE, leg = '4',c(-5, 60), -2.968575)
 dev.off()
 
+res = list()
+res = readRDS("res_Apr4_Combine.rds")
 
 system.time({
   A = matrix(c(.5,2.5), ncol = 2)
@@ -412,7 +417,7 @@ system.time({
 ContourPlot2D = function(f){
   par(mfrow = c(1,1))
   f.2 <- function(x,y,f=f){X = cbind(x,y);return(f(X))}
-  nn <- 1000
+  nn <- 200
   x <- seq(-2, 2, length.out = nn)
   y <- seq(-2, 2, length.out = nn)
   z <- outer(x , y , f.2, f=f)
@@ -452,30 +457,78 @@ ContourPlot2D_Track(f.Ackley, res[[4]][[1]], 1)
 ContourPlot2D_Track(f.rastrigin2, res[[5]][[1]], 1)
 
 #Comparison with CI
+res = readRDS("res_Apr4_Combine.rds")  
+
+
+pdf("test_plot_old.pdf", width=12, height=16, paper='special')
+par(mfrow = c(3, 2))
+fminPlot_CI = function(result,name,CI = TRUE){
+  y = c()
+  for (j in c(1,3,6,7,8)){
+    y = c(y, colMeans(result[[j]]$prog[,3:end]))
+  }
+  plot(c(0, 300), c(max(y), min(y)), type="n", 
+       xlab="black-box evaluations (n)", ylab="average best objective value",
+       main = name)
+  legend("topright", c("EI", "UEI","VEI","SEI","PEI"), lwd = 2, 
+         col = c(1,3,6,7,8))
+  for (i in c(1,3,6,7,8)){
+    lines(colMeans(result[[i]]$prog), col=i, lwd=2)
+    if (CI == TRUE){
+      lines(apply(result[[i]]$prog, MARGIN = 2, quantile, prob = 0.05), col = i, lty =2)
+      lines(apply(result[[i]]$prog, MARGIN = 2, quantile, prob = 0.95), col = i, lty =2)
+    }
+  }
+}
+fminPlot_CI(res[[1]], "Herbie") #Herbie
+fminPlot_CI(res[[2]], "RosenBrock") #RosenBrock
+fminPlot_CI(res[[3]], "SixHumpCamel") #SixHumpCamel
+#fminPlot_CI(res[[4]], "2D Ackley") 
+fminPlot_CI(res[[5]], "2D Rasgrgin") 
+fminPlot_CI(res[[6]], "6D Hartmann" ) 
+#fminPlot_CI(res[[7]]) "Goldstein Price"
+#fminPlot_CI(res[[7]]) 
+dev.off()
+
+
+#Comparison with CI
 fminPlot_CI = function(result,  CI = TRUE){
+  n = dim(result[[1]]$prog)[2]
   y = c()
   for (j in 1:8){
     y = c(y, colMeans(result[[j]]$prog[,3:end]))
   }
-  plot(c(0, 300), c(max(y), min(y)), type="n", 
-         xlab="black-box evaluations (n)", ylab="average best objective value")
+  plot(c(0, n), c(max(y), min(y)), type="n", 
+       xlab="black-box evaluations (n)", ylab="average best objective value")
   legend("topright", c("EI", "UEI.05", "UEI.2","UEI100", "UEI.Dym", "VEI","SEI","PEI"), lwd = 2, 
-           col = 1:8)
+         col = 1:8)
   for (i in 1:8){
     lines(colMeans(result[[i]]$prog), col=i, lwd=2)
     if (CI == TRUE){
-    lines(apply(result[[i]]$prog, MARGIN = 2, quantile, prob = 0.05), col = i, lty =2)
-    lines(apply(result[[i]]$prog, MARGIN = 2, quantile, prob = 0.95), col = i, lty =2)
+      lines(apply(result[[i]]$prog, MARGIN = 2, quantile, prob = 0.05), col = i, lty =2)
+      lines(apply(result[[i]]$prog, MARGIN = 2, quantile, prob = 0.95), col = i, lty =2)
     }
   }
 }
-fminPlot_CI(res[[1]])
-fminPlot_CI(res[[2]])
-fminPlot_CI(res[[3]])
-fminPlot_CI(res[[4]]) 
-fminPlot_CI(res[[5]]) 
-fminPlot_CI(res[[6]]) #try 2D
-fminPlot_CI(res[[7]]) 
+fminPlot_CI(res[[1]], FALSE)
+fminPlot_CI(res[[2]], FALSE) #VEI need recalculate
+fminPlot_CI(res[[3]], FALSE)
+fminPlot_CI(res[[4]]) #miss
+fminPlot_CI(res[[5]], FALSE) 
+fminPlot_CI(res[[6]], FALSE) #Hartmann 6D
+#fminPlot_CI(res[[7]]) #try 2D
+#fminPlot_CI(res[[8]], FALSE) 
+
+#Result
+return_mean_sd_min_max <- function(result){
+  l <- dim(result$prog)[2]
+  final_return <- result$prog[,l]
+  print(paste("mean: ", mean(final_return)))
+  print(paste("sd: ", sd(final_return)))
+  print(paste("min: ", min(final_return)))
+  print(paste("max: ", max(final_return)))
+}
+return_mean_sd_min_max(res[[1]][[3]])
 
 #Converge
 obj.best = function(result){
@@ -485,67 +538,67 @@ obj.best = function(result){
     lines(result$prog[j,], col=3, type="l")
   }
 }
-obj.best(res[[6]][[4]])
+obj.best(res[[1]][[2]])
 
 
-for (j in 1:5){
-  print(j)
-  readline(prompt="Press [enter] to show plot for next iteration")
-}
-
-herbie_test_plot = function(x, beta){
-  
-  f <- function(x){
-    ans <- sin(10 * pi * x) / (2 * x) + (x - 1)^4
-    return(ans)
-  }
-  
-  n <- ninit
-  fx <- f(x)
-  
-  xx <- matrix(sort(lhs(2000, c(.5, 2.5))), ncol = 1)
-  
-  da <- darg(list(mle = TRUE), x)
-  gp <- newGP(x, fx, da$start, g = .0001*var(fx), dK = TRUE)
-  preds <- predGP(gp, xx)
-  deleteGP(gp)
-  
-  fmin <- min(fx)
-  mu <- preds$mean
-  sig <- sqrt(diag(preds$Sigma))
-  sig2 <- sig^2
-  v <- (fmin - mu) / sig
-  ei <- (fmin - mu) * pnorm(v) + sig * dnorm (v)
-  vi <- sig2 * ((v^2 + 1) * pnorm(v) + v * dnorm(v)) - ei^2
-  vi <- ifelse(vi < 0, 0, vi) 
-  uei <- ei + beta * sqrt(vi)
-  lcb <- -mu + 1.96 * sig 
-  pei <- ei^2 + vi
-  sei <- ei/sqrt(vi)
-  
-  par(mfrow = c(1,2))
-  plot(xx, f(xx), type="l", lty = 2, ylim = c(-3,5))
-  lines(xx,mu)
-  lines(xx, mu + 1.96*sig, col ="red")
-  lines(xx, mu - 1.96*sig, col = "red")
-  
-  points(x,fx, pch =19, col="red")
-  idx <- which.min(fx)
-  points(x[idx,],fx[idx,], pch =19, col="blue")
-  abline(h = fx[idx,], lty = 2, col ="blue")
-  
-  gamma <- ei / sqrt(vi)
-  gamma <- max(gamma[is.finite(gamma)])
-  gamma <- beta
-  
-  plot(xx, uei, type="l", ylab = "")
-  uei <- ei + gamma * sqrt(vi)
-  idx <- which.max(uei)
-  lines(xx, uei, col = "blue")
-  #lines(xx, sei, col = "red")
-  #legend("topright",c("EI","UEI","SEI"), lty = 1, col = c("black", "blue", "red"))
-  
-}
+# for (j in 1:5){
+#   print(j)
+#   readline(prompt="Press [enter] to show plot for next iteration")
+# }
+# 
+# herbie_test_plot = function(x, beta){
+#   
+#   f <- function(x){
+#     ans <- sin(10 * pi * x) / (2 * x) + (x - 1)^4
+#     return(ans)
+#   }
+#   
+#   n <- ninit
+#   fx <- f(x)
+#   
+#   xx <- matrix(sort(lhs(2000, c(.5, 2.5))), ncol = 1)
+#   
+#   da <- darg(list(mle = TRUE), x)
+#   gp <- newGP(x, fx, da$start, g = .0001*var(fx), dK = TRUE)
+#   preds <- predGP(gp, xx)
+#   deleteGP(gp)
+#   
+#   fmin <- min(fx)
+#   mu <- preds$mean
+#   sig <- sqrt(diag(preds$Sigma))
+#   sig2 <- sig^2
+#   v <- (fmin - mu) / sig
+#   ei <- (fmin - mu) * pnorm(v) + sig * dnorm (v)
+#   vi <- sig2 * ((v^2 + 1) * pnorm(v) + v * dnorm(v)) - ei^2
+#   vi <- ifelse(vi < 0, 0, vi) 
+#   uei <- ei + beta * sqrt(vi)
+#   lcb <- -mu + 1.96 * sig 
+#   pei <- ei^2 + vi
+#   sei <- ei/sqrt(vi)
+#   
+#   par(mfrow = c(1,2))
+#   plot(xx, f(xx), type="l", lty = 2, ylim = c(-3,5))
+#   lines(xx,mu)
+#   lines(xx, mu + 1.96*sig, col ="red")
+#   lines(xx, mu - 1.96*sig, col = "red")
+#   
+#   points(x,fx, pch =19, col="red")
+#   idx <- which.min(fx)
+#   points(x[idx,],fx[idx,], pch =19, col="blue")
+#   abline(h = fx[idx,], lty = 2, col ="blue")
+#   
+#   gamma <- ei / sqrt(vi)
+#   gamma <- max(gamma[is.finite(gamma)])
+#   gamma <- beta
+#   
+#   plot(xx, uei, type="l", ylab = "")
+#   uei <- ei + gamma * sqrt(vi)
+#   idx <- which.max(uei)
+#   lines(xx, uei, col = "blue")
+#   #lines(xx, sei, col = "red")
+#   #legend("topright",c("EI","UEI","SEI"), lty = 1, col = c("black", "blue", "red"))
+#   
+# }
 
 
 
